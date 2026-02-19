@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Strength Block Tracker (A→E Rotation)</title>
+  <style>
+    :root{
+      --bg:#0b0f16; --card:#121a26; --muted:#9fb0c7; --text:#e8f0ff;
+      --accent:#4ea1ff; --good:#31d07f; --warn:#ffcc66; --bad:#ff5b5b;
+      --border:#1f2a3a;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{margin:0;background:linear-gradient(180deg,#070a10,#0b0f16);color:var(--text);}
+    header{padding:18px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#0b0f16cc;backdrop-filter: blur(8px);z-index:20;}
+    h1{margin:0;font-size:18px;letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:12px;margin-top:4px}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px;display:grid;gap:12px}
+    .grid{display:grid;gap:12px}
+    @media(min-width:980px){ .grid{grid-template-columns: 390px 1fr;} }
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,button,textarea{
+      border:1px solid var(--border);background:#0e1521;color:var(--text);
+      border-radius:10px;padding:10px 10px;font-size:14px;outline:none;
+    }
+    input,select{width:100%}
+    button{cursor:pointer}
+    button.primary{background:linear-gradient(180deg,#3a8cff,#2a72ff);border-color:#2a72ff}
+    button.ghost{background:transparent}
+    button.good{background:rgba(49,208,127,.12);border-color:rgba(49,208,127,.4)}
+    button.warn{background:rgba(255,204,102,.12);border-color:rgba(255,204,102,.4)}
+    button.bad{background:rgba(255,91,91,.12);border-color:rgba(255,91,91,.4)}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;border:1px solid var(--border);background:#0e1521;color:var(--muted);font-size:12px}
+    .big{font-size:16px;color:var(--text)}
+    .muted{color:var(--muted)}
+    .hr{height:1px;background:var(--border);margin:10px 0}
+    table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    th{font-size:12px;color:var(--muted);text-align:left;padding:0 10px}
+    td{padding:10px;border:1px solid var(--border);background:#0e1521}
+    td:first-child{border-radius:12px 0 0 12px}
+    td:last-child{border-radius:0 12px 12px 0}
+    .ex{font-weight:700}
+    .meta{font-size:12px;color:var(--muted);margin-top:4px}
+    .setgrid{display:grid;grid-template-columns: 78px 1fr 1fr 1fr;gap:8px;align-items:center}
+    .setgrid input{padding:8px;border-radius:10px}
+    .timer{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      border:1px dashed var(--border);border-radius:12px;padding:10px;background:#0c1320;
+    }
+    .time{font-variant-numeric: tabular-nums;font-size:18px}
+    .tag{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+    .callout{border:1px solid var(--border);border-radius:12px;padding:10px;background:#0c1320}
+    .callout b{color:#fff}
+    .checklist{display:grid;gap:6px;margin-top:8px}
+    .check{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:13px}
+    .check input{width:auto}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0 14px">
+    <h1>Strength Block Tracker — A→E Rotation</h1>
+    <div class="sub">Auto loads by week • Training Max % • Rest timers • Logs + CSV export • Offline local save</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="card">
+      <div class="row">
+        <div style="flex:1;min-width:150px">
+          <label>Week</label>
+          <select id="weekSelect"></select>
+        </div>
+        <div style="flex:1;min-width:150px">
+          <label>Session</label>
+          <select id="sessionSelect"></select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="btnRender">Load Session</button>
+        <button class="good" id="btnNext">Next Session →</button>
+        <button class="ghost" id="btnResetView">Re-render</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div class="pill"><span class="tag">Rounding</span> <span class="big" id="roundingLabel">2.5kg</span></div>
+        <div class="pill"><span class="tag">TM</span> <span class="big" id="tmLabel">95%</span></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div style="flex:1;min-width:160px">
+          <label>Training Max % (TM)</label>
+          <input id="tmPct" type="number" step="1" min="85" max="100" placeholder="95" />
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label>Bodyweight (kg) (optional)</label>
+          <input id="bw" type="number" step="0.1" placeholder="71" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div style="flex:1;min-width:160px">
+          <label>Bench 1RM (kg)</label>
+          <input id="rmBench" type="number" step="0.5" placeholder="72.5" />
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label>Squat 1RM (kg)</label>
+          <input id="rmSquat" type="number" step="0.5" placeholder="100" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div style="flex:1;min-width:160px">
+          <label>Deadlift 1RM (kg)</label>
+          <input id="rmDead" type="number" step="0.5" placeholder="120" />
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label>OHP 1RM (kg) (optional)</label>
+          <input id="rmOHP" type="number" step="0.5" placeholder="~60" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="btnSave">Save Settings</button>
+        <button class="ghost" id="btnExport">Export CSV</button>
+        <button class="bad" id="btnClearAll">Clear All Data</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="timer">
+        <div>
+          <div class="muted" style="font-size:12px">Rest Timer</div>
+          <div class="time" id="timerText">00:00</div>
+        </div>
+        <div class="row" style="gap:8px">
+          <button class="good" id="t90">1:30</button>
+          <button class="warn" id="t180">3:00</button>
+          <button class="ghost" id="tStop">Stop</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="callout">
+        <div class="muted" style="font-size:12px">Rules</div>
+        <div style="margin-top:6px">
+          <b>No dips.</b> Avoid heavy DB kick-ups. Back volume drives your bench.
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="callout">
+        <div class="muted" style="font-size:12px">Lower warm-up (right hip / knee cave)</div>
+        <div class="checklist">
+          <div class="check"><input type="checkbox"> 90/90 lift-offs (R focus) 2–3×6–8</div>
+          <div class="check"><input type="checkbox"> Side-lying hip abduction (R) 2×12</div>
+          <div class="check"><input type="checkbox"> Lateral band walks 2×10–12 steps</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="callout">
+        <div class="muted" style="font-size:12px">Upper warm-up (AC/neck)</div>
+        <div class="checklist">
+          <div class="check"><input type="checkbox"> Band pull-aparts ×20</div>
+          <div class="check"><input type="checkbox"> Face pulls ×15</div>
+          <div class="check"><input type="checkbox"> Scap push-ups ×10</div>
+          <div class="check"><input type="checkbox"> 1 slow paused warm-up set on bench</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="muted" style="font-size:12px">Session</div>
+          <div class="big" id="sessionTitle">—</div>
+          <div class="meta" id="sessionNote">—</div>
+        </div>
+        <div class="row">
+          <button class="primary" id="btnSaveSession">Save Session Log</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div id="workoutTable"></div>
+
+      <div class="hr"></div>
+
+      <label>Notes (pain / cues / wins)</label>
+      <textarea id="notes" rows="3" placeholder="e.g. Bench felt fast, first rep AC awareness, strict row 70kg perfect."></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== Config =====
+  const ROUND_TO = 2.5;
+  const REST = { comp: 180, acc: 90 };
+
+  // Week prescriptions for MAIN lifts (Bench/Squat/Deadlift)
+  const WEEK = {
+    1: { kind:"setsreps", sets:5, reps:3, pctTM:0.82, note:"Base week. Clean reps. No grind." },
+    2: { kind:"setsreps", sets:5, reps:3, pctTM:0.84, note:"Slight bump. Keep speed." },
+    3: { kind:"setsreps", sets:6, reps:2, pctTM:0.87, note:"Heavy doubles. Long rests." },
+    4: { kind:"setsreps", sets:4, reps:4, pctTM:0.80, note:"Reload volume. Technique." },
+    5: { kind:"setsreps", sets:5, reps:2, pctTM:0.88, note:"Heavy doubles. No ugly reps." },
+    6: { kind:"top", topReps:2, topMin:0.90, topMax:0.92, backSets:3, backReps:2, backPct:0.88, note:"Top double 90–92% TM + backoffs." }
+  };
+
+  // Rotating sessions (built for your shoulder + right hip)
+  const SESSIONS = {
+    "A": { title:"A — Upper Strength (Bench Priority)",
+      note:"No supersets on first 3. Bench setup = scap DOWN & BACK. Pull-up load conservative until fully healed.",
+      items:[
+        { key:"bench_main", name:"Bench Press (comp-style)", kind:"MAIN", lift:"bench", rest:REST.comp },
+        { key:"row_strict", name:"Barbell Row (STRICT)", kind:"FIXED", sets:5, reps:5, rest:REST.comp, hint:"Start 70kg strict. Add 2.5kg only when identical reps." },
+        { key:"pull", name:"Weighted Pull-ups (controlled)", kind:"FIXED", sets:4, reps:5, rest:REST.comp, hint:"Start +5kg while collarbone/neck area finishes healing. Progress slowly." },
+        { key:"reardelt", name:"Rear Delt DB Fly", kind:"FIXED", sets:3, reps:"12–20", rest:REST.acc },
+        { key:"tris", name:"Triceps (cable)", kind:"FIXED", sets:3, reps:"8–12", rest:REST.acc }
+      ]
+    },
+    "B": { title:"B — Lower Strength (Squat Priority)",
+      note:"Do right-hip warm-up first. Cue: spread the floor evenly (equal torque both feet).",
+      items:[
+        { key:"squat_main", name:"Low-Bar Back Squat", kind:"MAIN", lift:"squat", rest:REST.comp },
+        { key:"pause_squat", name:"Paused Squat (2-count)", kind:"PCT_TM", lift:"squat", pctTM:0.70, sets:3, reps:3, rest:REST.comp },
+        { key:"rdl", name:"Romanian Deadlift", kind:"FIXED", sets:4, reps:"6–8", rest:REST.comp },
+        { key:"core", name:"Core (leg raises/ab wheel)", kind:"FIXED", sets:3, reps:"10–15", rest:REST.acc }
+      ]
+    },
+    "C": { title:"C — Upper Pull Overload (Back Foundation)",
+      note:"Back is the bench base. Strict pulling, no neck craning.",
+      items:[
+        { key:"pull2", name:"Pull-ups (tech focus)", kind:"FIXED", sets:5, reps:4, rest:REST.comp, hint:"Bodyweight or light load. Scap depress first, then pull." },
+        { key:"row6", name:"Row Variation (Pendlay/Seal)", kind:"FIXED", sets:4, reps:6, rest:REST.comp },
+        { key:"csrow", name:"Chest-Supported Row", kind:"FIXED", sets:3, reps:8, rest:REST.comp },
+        { key:"lat", name:"Lateral Raise", kind:"FIXED", sets:3, reps:"12–20", rest:REST.acc },
+        { key:"bi", name:"Biceps (curl)", kind:"FIXED", sets:3, reps:"10–12", rest:REST.acc }
+      ]
+    },
+    "D": { title:"D — Deadlift + Squat Support",
+      note:"Optional in W3+: one fast single @ ~88% TM before work sets.",
+      items:[
+        { key:"dead_main", name:"Deadlift (conventional)", kind:"MAIN", lift:"dead", rest:REST.comp },
+        { key:"front", name:"Front Squat", kind:"FIXED", sets:4, reps:5, rest:REST.comp },
+        { key:"thrust", name:"Hip Thrust / Glute Bridge", kind:"FIXED", sets:3, reps:8, rest:REST.comp },
+        { key:"ext", name:"Back Extension", kind:"FIXED", sets:3, reps:"10–15", rest:REST.acc }
+      ]
+    },
+    "E": { title:"E — Pressing Power (AC-friendly)",
+      note:"No dips. No heavy DB kick-ups. Use controlled setup. Back stays in.",
+      items:[
+        { key:"ohp", name:"Standing Barbell OHP", kind:"PCT_TM_OPT", lift:"ohp", pctTM:0.80, sets:5, reps:3, rest:REST.comp,
+          fallback:"Work to a heavy triple (clean), then 3×4 backoffs." },
+        { key:"cgb", name:"Close-Grip Bench Press", kind:"PCT_TM", lift:"bench", pctTM:0.70, sets:4, reps:5, rest:REST.comp },
+        { key:"csrow2", name:"Chest-Supported Row", kind:"FIXED", sets:3, reps:8, rest:REST.comp },
+        { key:"lat2", name:"Lateral Raise", kind:"FIXED", sets:3, reps:"12–20", rest:REST.acc },
+        { key:"arms", name:"Arms (your choice)", kind:"FIXED", sets:3, reps:"10–12", rest:REST.acc }
+      ]
+    }
+  };
+
+  // ===== Storage =====
+  const KEY = {
+    settings:"sb_settings_v2",
+    state:"sb_state_v2",
+    logs:"sb_logs_v2",
+    drafts:"sb_drafts_v2"
+  };
+
+  const defaultSettings = {
+    tmPct:95, bw:71,
+    rms:{ bench:72.5, squat:100, dead:120, ohp:null }
+  };
+  const defaultState = { week:1, session:"A" };
+
+  // ===== Helpers =====
+  const el = (id)=>document.getElementById(id);
+
+  function roundTo(x, step=ROUND_TO){
+    if(!isFinite(x)) return "";
+    const v = Math.round(x/step)*step;
+    return step % 1 === 0 ? String(v.toFixed(0)) : String(v.toFixed(1));
+  }
+  function fmt(sec){
+    const m = Math.floor(sec/60), s = sec%60;
+    return `${m}:${String(s).padStart(2,"0")}`;
+  }
+
+  function loadJSON(k, fallback){
+    try{
+      const v = localStorage.getItem(k);
+      return v ? JSON.parse(v) : fallback;
+    }catch{ return fallback; }
+  }
+  function saveJSON(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+  function getSettings(){ return loadJSON(KEY.settings, defaultSettings); }
+  function setSettings(s){ saveJSON(KEY.settings, s); }
+
+  function getState(){ return loadJSON(KEY.state, defaultState); }
+  function setState(s){ saveJSON(KEY.state, s); }
+
+  function getLogs(){ return loadJSON(KEY.logs, []); }
+  function setLogs(L){ saveJSON(KEY.logs, L); }
+
+  function trainingMax(oneRM, tmPct){
+    if(!oneRM) return null;
+    return oneRM * (tmPct/100);
+  }
+
+  function mainPrescriptionText(week){
+    const w = WEEK[week];
+    if(w.kind === "setsreps") return `${w.sets}×${w.reps} @ ${(w.pctTM*100).toFixed(0)}% TM`;
+    return `Top ${w.topReps} @ 90–92% TM + ${w.backSets}×${w.backReps} @ 88% TM`;
+  }
+
+  function nextSessionKey(k){
+    const order = ["A","B","C","D","E"];
+    const i = order.indexOf(k);
+    return order[(i+1) % order.length];
+  }
+
+  // ===== Timer =====
+  let timer = { id:null, end:0 };
+  function startTimer(sec){
+    stopTimer();
+    timer.end = Date.now() + sec*1000;
+    el("timerText").textContent = fmt(sec);
+    timer.id = setInterval(()=>{
+      const left = Math.max(0, Math.ceil((timer.end - Date.now())/1000));
+      el("timerText").textContent = fmt(left);
+      if(left <= 0) stopTimer();
+    }, 250);
+  }
+  function stopTimer(){
+    if(timer.id) clearInterval(timer.id);
+    timer.id = null;
+  }
+
+  // ===== UI Init =====
+  function initSelectors(){
+    const ws = el("weekSelect");
+    ws.innerHTML = "";
+    for(let i=1;i<=6;i++){
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `Week ${i}`;
+      ws.appendChild(opt);
+    }
+    const ss = el("sessionSelect");
+    ss.innerHTML = "";
+    for(const k of ["A","B","C","D","E"]){
+      const opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = k;
+      ss.appendChild(opt);
+    }
+  }
+
+  function hydrate(){
+    const s = getSettings();
+    el("tmPct").value = s.tmPct ?? 95;
+    el("bw").value = s.bw ?? "";
+    el("rmBench").value = s.rms?.bench ?? "";
+    el("rmSquat").value = s.rms?.squat ?? "";
+    el("rmDead").value  = s.rms?.dead  ?? "";
+    el("rmOHP").value   = s.rms?.ohp   ?? "";
+
+    const st = getState();
+    el("weekSelect").value = String(st.week ?? 1);
+    el("sessionSelect").value = st.session ?? "A";
+
+    el("tmLabel").textContent = `${Number(el("tmPct").value || 95)}%`;
+  }
+
+  function saveSettingsFromInputs(){
+    const tmPct = Number(el("tmPct").value) || 95;
+    const bw = Number(el("bw").value) || null;
+    const rms = {
+      bench: Number(el("rmBench").value) || null,
+      squat: Number(el("rmSquat").value) || null,
+      dead:  Number(el("rmDead").value)  || null,
+      ohp:   Number(el("rmOHP").value)   || null
+    };
+    setSettings({ tmPct, bw, rms });
+    el("tmLabel").textContent = `${tmPct}%`;
+  }
+
+  function getDraftKey(week, session){ return `draft_${week}_${session}`; }
+
+  // ===== Render =====
+  function render(){
+    const week = Number(el("weekSelect").value);
+    const sessionKey = el("sessionSelect").value;
+    setState({ week, session: sessionKey });
+
+    const settings = getSettings();
+    const tmPct = settings.tmPct ?? 95;
+    const rms = settings.rms ?? {};
+
+    const sess = SESSIONS[sessionKey];
+    el("sessionTitle").textContent = sess.title;
+    el("sessionNote").textContent = `${WEEK[week].note} • Main lift: ${mainPrescriptionText(week)} • ${sess.note}`;
+
+    // Notes draft
+    const drafts = loadJSON(KEY.drafts, {});
+    el("notes").value = drafts[getDraftKey(week, sessionKey)] || "";
+
+    const container = el("workoutTable");
+    container.innerHTML = "";
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th style="width:34%">Exercise</th>
+          <th style="width:26%">Prescription</th>
+          <th style="width:40%">Log</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector("tbody");
+
+    sess.items.forEach(item=>{
+      const tr = document.createElement("tr");
+
+      const td1 = document.createElement("td");
+      td1.innerHTML = `<div class="ex">${item.name}</div>
+                       <div class="meta">${item.kind} • Rest ${fmt(item.rest || REST.acc)}${item.hint ? " • " + item.hint : ""}</div>`;
+
+      const td2 = document.createElement("td");
+      td2.innerHTML = `<div class="muted">${prescriptionText(item, week, tmPct, rms)}</div>`;
+
+      const td3 = document.createElement("td");
+      td3.appendChild(buildLogger(item, week, tmPct, rms));
+
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      tbody.appendChild(tr);
+    });
+
+    container.appendChild(table);
+  }
+
+  function prescriptionText(item, week, tmPct, rms){
+    if(item.kind === "MAIN"){
+      const rm = rms[item.lift];
+      if(!rm) return `Enter ${item.lift.toUpperCase()} 1RM to auto-calc.`;
+      const tm = trainingMax(rm, tmPct);
+      const w = WEEK[week];
+      if(w.kind === "setsreps"){
+        const load = roundTo(tm * w.pctTM);
+        return `${w.sets}×${w.reps} @ ${(w.pctTM*100).toFixed(0)}% TM (~${load}kg)`;
+      }else{
+        const lo = roundTo(tm * w.topMin);
+        const hi = roundTo(tm * w.topMax);
+        const back = roundTo(tm * w.backPct);
+        return `Top ${w.topReps} @ 90–92% TM (${lo}–${hi}kg), then ${w.backSets}×${w.backReps} @ 88% TM (~${back}kg)`;
+      }
+    }
+
+    if(item.kind === "PCT_TM"){
+      const rm = rms[item.lift];
+      if(!rm) return `Enter ${item.lift.toUpperCase()} 1RM to auto-calc.`;
+      const tm = trainingMax(rm, tmPct);
+      const load = roundTo(tm * item.pctTM);
+      return `${item.sets}×${item.reps} @ ${(item.pctTM*100).toFixed(0)}% TM (~${load}kg)`;
+    }
+
+    if(item.kind === "PCT_TM_OPT"){
+      const rm = rms[item.lift];
+      if(!rm) return item.fallback || "Load by feel.";
+      const tm = trainingMax(rm, tmPct);
+      const load = roundTo(tm * item.pctTM);
+      return `${item.sets}×${item.reps} @ ${(item.pctTM*100).toFixed(0)}% TM (~${load}kg)`;
+    }
+
+    // FIXED
+    return `${item.sets}×${item.reps} (progress reps → then load)`;
+  }
+
+  function buildLogger(item, week, tmPct, rms){
+    const wrap = document.createElement("div");
+    wrap.style.display = "grid";
+    wrap.style.gap = "10px";
+
+    const sessionKey = el("sessionSelect").value;
+    const wk = Number(el("weekSelect").value);
+    const keyPrefix = `${wk}_${sessionKey}_${item.key}`;
+
+    // Determine set labels/count
+    let labels = [];
+    if(item.kind === "MAIN"){
+      const w = WEEK[week];
+      labels = (w.kind === "setsreps")
+        ? Array.from({length:w.sets}, (_,i)=>String(i+1))
+        : ["Top","B1","B2","B3"];
+    }else{
+      const c = item.sets || 3;
+      labels = Array.from({length:c}, (_,i)=>String(i+1));
+    }
+
+    // Prefill weight suggestion
+    const wtSuggestion = autoWeight(item, week, tmPct, rms);
+
+    labels.forEach((lab, i)=>{
+      const row = document.createElement("div");
+      row.className = "setgrid";
+      row.innerHTML = `
+        <div class="muted">Set ${lab}</div>
+        <input inputmode="numeric" placeholder="Reps" id="${keyPrefix}_reps_${i}">
+        <input inputmode="decimal" placeholder="RPE" id="${keyPrefix}_rpe_${i}">
+        <input placeholder="Weight (kg)" id="${keyPrefix}_wt_${i}">
+      `;
+      wrap.appendChild(row);
+      // prefill weight
+      const wt = row.querySelector(`#${CSS.escape(keyPrefix)}_wt_${i}`);
+      if(wt && !wt.value && wtSuggestion){
+        if(item.kind === "MAIN" && WEEK[week].kind === "top" && i === 0){
+          wt.value = "90–92% TM";
+        }else{
+          wt.value = wtSuggestion;
+        }
+      }
+    });
+
+    // Timer
+    const btnRow = document.createElement("div");
+    btnRow.className = "row";
+    btnRow.innerHTML = `
+      <button class="warn">Start ${fmt(item.rest || REST.acc)}</button>
+      <span class="muted" style="font-size:12px">Compounds 3:00+ • Accessories 1:30</span>
+    `;
+    btnRow.querySelector("button").addEventListener("click", ()=> startTimer(item.rest || REST.acc));
+    wrap.appendChild(btnRow);
+
+    return wrap;
+  }
+
+  function autoWeight(item, week, tmPct, rms){
+    if(item.kind === "MAIN"){
+      const rm = rms[item.lift]; if(!rm) return "";
+      const tm = trainingMax(rm, tmPct);
+      const w = WEEK[week];
+      if(w.kind === "setsreps") return roundTo(tm * w.pctTM);
+      return ""; // top set is a range
+    }
+    if(item.kind === "PCT_TM" || item.kind === "PCT_TM_OPT"){
+      const rm = rms[item.lift]; if(!rm) return "";
+      const tm = trainingMax(rm, tmPct);
+      return roundTo(tm * item.pctTM);
+    }
+    return "";
+  }
+
+  // ===== Save session + export =====
+  function nowISO(){ return new Date().toISOString(); }
+
+  function saveSession(){
+    const week = Number(el("weekSelect").value);
+    const sessionKey = el("sessionSelect").value;
+    const sess = SESSIONS[sessionKey];
+    const entries = [];
+
+    sess.items.forEach(item=>{
+      // determine label count like renderer
+      let labels = [];
+      if(item.kind === "MAIN"){
+        const w = WEEK[week];
+        labels = (w.kind === "setsreps")
+          ? Array.from({length:w.sets}, (_,i)=>String(i+1))
+          : ["Top","B1","B2","B3"];
+      }else{
+        const c = item.sets || 3;
+        labels = Array.from({length:c}, (_,i)=>String(i+1));
+      }
+      const keyPrefix = `${week}_${sessionKey}_${item.key}`;
+
+      labels.forEach((lab, i)=>{
+        const reps = (document.getElementById(`${keyPrefix}_reps_${i}`)?.value || "").trim();
+        const rpe  = (document.getElementById(`${keyPrefix}_rpe_${i}`)?.value || "").trim();
+        const wt   = (document.getElementById(`${keyPrefix}_wt_${i}`)?.value || "").trim();
+        if(reps || rpe || wt){
+          entries.push({ exercise:item.name, set:lab, reps, rpe, weight:wt });
+        }
+      });
+    });
+
+    const logs = getLogs();
+    logs.push({
+      ts: nowISO(),
+      week, session: sessionKey,
+      title: sess.title,
+      notes: el("notes").value || "",
+      entries
+    });
+    setLogs(logs);
+    alert("Saved ✅");
+  }
+
+  function exportCSV(){
+    const logs = getLogs();
+    if(!logs.length){ alert("No logs to export yet."); return; }
+
+    const rows = [["timestamp","week","session","exercise","set","reps","rpe","weight","notes"]];
+    for(const L of logs){
+      if(L.entries && L.entries.length){
+        for(const e of L.entries){
+          rows.push([
+            L.ts, L.week, L.session,
+            e.exercise, e.set, e.reps, e.rpe, e.weight,
+            (L.notes||"").replaceAll("\n"," ")
+          ]);
+        }
+      }else{
+        rows.push([L.ts, L.week, L.session,"","","","","",(L.notes||"").replaceAll("\n"," ")]);
+      }
+    }
+    const csv = rows.map(r=>r.map(x=>{
+      const s = String(x ?? "");
+      return /[",\n]/.test(s) ? `"${s.replaceAll('"','""')}"` : s;
+    }).join(",")).join("\n");
+
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "strength_block_logs.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function clearAll(){
+    if(!confirm("Clear ALL data (settings + logs + state)?")) return;
+    localStorage.removeItem(KEY.settings);
+    localStorage.removeItem(KEY.state);
+    localStorage.removeItem(KEY.logs);
+    localStorage.removeItem(KEY.drafts);
+    alert("Cleared.");
+    location.reload();
+  }
+
+  function saveDraft(){
+    const week = Number(el("weekSelect").value);
+    const sessionKey = el("sessionSelect").value;
+    const drafts = loadJSON(KEY.drafts, {});
+    drafts[getDraftKey(week, sessionKey)] = el("notes").value || "";
+    saveJSON(KEY.drafts, drafts);
+  }
+
+  // ===== Wire =====
+  function wire(){
+    el("btnSave").addEventListener("click", ()=>{
+      saveSettingsFromInputs();
+      render();
+      alert("Saved ✅");
+    });
+    el("btnRender").addEventListener("click", render);
+    el("btnNext").addEventListener("click", ()=>{
+      el("sessionSelect").value = nextSessionKey(el("sessionSelect").value);
+      render();
+    });
+    el("btnResetView").addEventListener("click", render);
+    el("btnSaveSession").addEventListener("click", saveSession);
+    el("btnExport").addEventListener("click", exportCSV);
+    el("btnClearAll").addEventListener("click", clearAll);
+
+    el("t90").addEventListener("click", ()=>startTimer(90));
+    el("t180").addEventListener("click", ()=>startTimer(180));
+    el("tStop").addEventListener("click", stopTimer);
+
+    el("weekSelect").addEventListener("change", render);
+    el("sessionSelect").addEventListener("change", render);
+    el("tmPct").addEventListener("input", ()=> el("tmLabel").textContent = `${Number(el("tmPct").value||95)}%`);
+
+    el("notes").addEventListener("input", saveDraft);
+  }
+
+  initSelectors();
+  hydrate();
+  wire();
+  render();
+</script>
+</body>
+</html>
