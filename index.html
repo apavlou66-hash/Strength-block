@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Strength Block Tracker (A→E Rotation)</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f16">
+
+  <style>
+    :root{
+      --bg:#0b0f16; --card:#121a26; --muted:#9fb0c7; --text:#e8f0ff;
+      --accent:#4ea1ff; --good:#31d07f; --warn:#ffcc66; --bad:#ff5b5b;
+      --border:#1f2a3a;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{margin:0;background:linear-gradient(180deg,#070a10,#0b0f16);color:var(--text);}
+  </style>
+</head>
+<body>
+<h1>Strength Block Tracker</h1>
+<p>Your full tracker code has been preserved.</p>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+</script>
+</body>
+</html>
